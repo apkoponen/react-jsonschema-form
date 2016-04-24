@@ -1,15 +1,17 @@
 import React, { Component, PropTypes } from "react";
-import { Validator } from "jsonschema";
+import { validate as jsonValidate } from "jsonschema";
 
 import SchemaField from "./fields/SchemaField";
 import TitleField from "./fields/TitleField";
+import ErrorList from "./ErrorList";
 import {
   getDefaultFormState,
   shouldRender,
   toErrorSchema,
-  toIdSchema
+  toErrorList,
+  toIdSchema,
+  mergeObjects
 } from "../utils";
-import ErrorList from "./ErrorList";
 
 
 export default class Form extends Component {
@@ -34,8 +36,9 @@ export default class Form extends Component {
     const liveValidate = this.props.liveValidate || props.liveValidate;
     const {definitions} = schema;
     const formData = getDefaultFormState(schema, props.formData, definitions);
-    const errors = edit && liveValidate ? this.validate(formData, schema) : [];
-    const errorSchema = toErrorSchema(errors);
+    const {errors, errorSchema} = edit && liveValidate ?
+      this.validate(formData, schema) :
+      {errors: [], errorSchema: {}};
     const idSchema = toIdSchema(schema, uiSchema["ui:rootFieldId"], definitions);
     return {status: "initial", formData, edit, errors, errorSchema, idSchema};
   }
@@ -45,8 +48,16 @@ export default class Form extends Component {
   }
 
   validate(formData, schema) {
-    const validator = new Validator();
-    return validator.validate(formData, schema || this.props.schema).errors;
+    const {validate} = this.props;
+    const {errors} = jsonValidate(formData, schema || this.props.schema);
+    const errorSchema = toErrorSchema(errors);
+    if (typeof validate === "function") {
+      const customErrorSchema = validate(formData);
+      const newErrorSchema = mergeObjects(errorSchema, customErrorSchema, true);
+      const newErrors = toErrorList(newErrorSchema);
+      return {errors: newErrors, errorSchema: newErrorSchema};
+    }
+    return {errors, errorSchema};
   }
 
   renderErrors() {
@@ -59,9 +70,10 @@ export default class Form extends Component {
 
   onChange = (formData, options={validate: false}) => {
     const liveValidate = this.props.liveValidate || options.validate;
-    const errors = liveValidate ? this.validate(formData) :
-                                  this.state.errors;
-    const errorSchema = toErrorSchema(errors);
+    const {errors, errorSchema} = liveValidate ? this.validate(formData) : {
+      errors: this.state.errors,
+      errorSchema: this.state.errorSchema,
+    };
     this.setState({
       status: "editing",
       formData,
@@ -78,9 +90,8 @@ export default class Form extends Component {
   onSubmit = (event) => {
     event.preventDefault();
     this.setState({status: "submitted"});
-    const errors = this.validate(this.state.formData);
+    const {errors, errorSchema} = this.validate(this.state.formData);
     if (Object.keys(errors).length > 0) {
-      const errorSchema = toErrorSchema(errors);
       this.setState({errors, errorSchema});
       setImmediate(() => {
         if (this.props.onError) {

@@ -246,12 +246,13 @@ class App extends Component {
   constructor(props) {
     super(props);
     // initialize state with Simple data sample
-    const {schema, uiSchema, formData} = samples.Simple;
+    const {schema, uiSchema, formData, validate} = samples.Simple;
     this.state = {
       form: false,
       schema,
       uiSchema,
       formData,
+      validate,
       editor: "default",
       theme: "default",
     };
@@ -287,7 +288,7 @@ class App extends Component {
   onFormDataChange = ({formData}) => this.setState({formData});
 
   render() {
-    const {schema, uiSchema, formData, theme} = this.state;
+    const {schema, uiSchema, formData, theme, validate} = this.state;
     return (
       <div className="container-fluid">
         <div className="page-header">
@@ -331,6 +332,7 @@ class App extends Component {
               formData={formData}
               onChange={this.onFormDataChange}
               fields={{geo: GeoPosition}}
+              validate={validate}
               onError={log("errors")} />}
         </div>
       </div>

@@ -157,13 +157,15 @@ function isObject(thing) {
   return typeof thing === "object" && thing !== null && !Array.isArray(thing);
 }
 
-export function mergeObjects(obj1, obj2) {
+export function mergeObjects(obj1, obj2, concatArrays = false) {
   // Recursively merge deeply nested objects.
   var acc = Object.assign({}, obj1); // Prevent mutation of source object.
   return Object.keys(obj2).reduce((acc, key) =>{
-    const right = obj2[key];
+    const left = obj1[key], right = obj2[key];
     if (obj1.hasOwnProperty(key) && isObject(right)) {
-      acc[key] = mergeObjects(obj1[key], right);
+      acc[key] = mergeObjects(left, right, concatArrays);
+    } else if (concatArrays && Array.isArray(left) && Array.isArray(right)) {
+      acc[key] = left.concat(right);
     } else {
       acc[key] = right;
     }
@@ -258,6 +260,18 @@ function errorPropertyToPath(property) {
       path.push(node);
     }
     return path;
+  }, []);
+}
+
+export function toErrorList(errorSchema) {
+  return Object.keys(errorSchema).reduce((acc, key) => {
+    const field = errorSchema[key];
+    if ("errors" in field) {
+      acc = acc.concat(field.errors.map(stack => ({stack: `${key} ${stack}`})));
+    } else if (isObject(field)) {
+      acc = acc.concat(toErrorList(field));
+    }
+    return acc;
   }, []);
 }
 

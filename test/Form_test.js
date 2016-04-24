@@ -951,4 +951,45 @@ describe("Form", () => {
       });
     });
   });
+
+  describe("Custom validation", () => {
+    it("should perform custom validation", () => {
+      const schema = {
+        type: "object",
+        properties: {
+          pass1: {type: "string", minLength: 3},
+          pass2: {type: "string", minLength: 3},
+        }
+      };
+
+      const formData = {
+        pass1: "aaa",
+        pass2: "b"
+      };
+
+      function validate({pass1, pass2}) {
+        if (pass1 !== pass2) {
+          return {
+            pass2: {
+              errors: ["Passwords don't match"]
+            }
+          };
+        }
+        return {};
+      }
+
+      const {comp} = createFormComponent({schema, validate, liveValidate: true});
+      comp.componentWillReceiveProps({formData});
+
+
+      expect(comp.state.errorSchema).eql({
+        pass2: {
+          errors: [
+            "does not meet minimum length of 3",
+            "Passwords don't match",
+          ]
+        }
+      });
+    });
+  });
 });
