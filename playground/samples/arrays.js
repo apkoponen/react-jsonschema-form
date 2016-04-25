@@ -5,6 +5,7 @@ module.exports = {
       listOfStrings: {
         type: "array",
         title: "A list of strings",
+        minItems: 3,
         items: {
           type: "string",
           default: "bazinga"

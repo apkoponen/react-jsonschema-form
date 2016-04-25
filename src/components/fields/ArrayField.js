@@ -24,6 +24,12 @@ class ArrayField extends Component {
   constructor(props) {
     super(props);
     this.state = this.getStateFromProps(props);
+
+    if(!isMultiSelect(props.schema)) {
+      this.state.items = this.padMinItems(this.state.items, props.schema.minItems);
+    }
+    
+    super.validate(this.state);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -56,17 +62,32 @@ class ArrayField extends Component {
     setImmediate(() => this.props.onChange(this.state.items, options));
   }
 
-  onAddClick = (event) => {
-    event.preventDefault();
-    const {items} = this.state;
+  padMinItems(items, minItems) {
+    if(minItems && minItems > 0 && items.length < minItems) {
+      let itemsToAdd = [];
+      for(var i = 0; i < minItems - items.length; i++) {
+        itemsToAdd.push(this.getNewDefaultItem());
+      }
+      return items.concat(itemsToAdd);
+    }
+    return items;
+  }
+
+  getNewDefaultItem() {
     const {schema, registry} = this.props;
     const {definitions} = registry;
     let itemSchema = schema.items;
     if (isFixedItems(schema) && allowAdditionalItems(schema)) {
       itemSchema = schema.additionalItems;
     }
+    return getDefaultFormState(itemSchema, undefined, definitions)
+  }
+
+  onAddClick = (event) => {
+    event.preventDefault();
+    const {items} = this.state;
     this.asyncSetState({
-      items: items.concat([getDefaultFormState(itemSchema, undefined, definitions)])
+      items: items.concat([this.getNewDefaultItem()])
     }, {validate: false});
   };
 
